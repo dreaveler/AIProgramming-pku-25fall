@@ -1,0 +1,26 @@
+Metadata-Version: 2.4
+Name: torchofdreaveler
+Version: 1.0.0
+Summary: Homework of pku2025fall AIProgramming
+Home-page: https://github.com/dreaveler/AIProgramming-pku-25fall.git
+Author: Dreaveler
+Author-email: 2169448673@qq.com
+License: MIT
+Classifier: License :: OSI Approved :: MIT classifiers
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: torch
+Requires-Dist: numpy
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+这是北京大学25秋ai中的编程全部作业
+需要自行下载pybind11
