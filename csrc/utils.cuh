@@ -2,9 +2,9 @@
 #ifndef UTILS_CUH
 #define UTILS_CUH
 
-#include"tensor.cuh"
-#include"cublas_v2.h"
-#include"function.cuh"
+#include "tensor.cuh"
+#include "cublas_v2.h"
+#include "common/cuda_utils.cuh"
 
 void flatten_kernel(const Tensor& kernel4d, Tensor& out2d);
 

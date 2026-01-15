@@ -15,3 +15,9 @@ mnist_data/
 
 *.zip
 
+data/
+tiny-imagenet-200/
+
+datasets/
+checkpoints/
+logdir/

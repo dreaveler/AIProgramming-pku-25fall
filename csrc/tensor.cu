@@ -180,47 +180,33 @@ __global__ void fill_kernel(float* data, float value, int N) {
         data[i] = value;
     }
 }
-
-Tensor Tensor::ones(const std::vector<int>& _shape, Device _device) {
+Tensor Tensor::fill(const std::vector<int>& _shape,const float& value,Device _device){
     Tensor t(_shape, _device);
     if (_device == Device::cpu) {
         float* ptr = t.h.get();
         for (int i = 0; i < t.N; ++i) {
-            ptr[i] = 1.0f;
+            ptr[i] = value;
         }
     } else if (_device == Device::gpu) {
-    const int threads_per_block = 256;
-    const int blocks = (t.N + threads_per_block - 1) / threads_per_block;
-    fill_kernel<<<blocks, threads_per_block>>>(t.d.get(), 1.0f, t.N);
-    
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        throw std::runtime_error(std::string("Tensor::ones fill_kernel 启动失败: ") + cudaGetErrorString(err));
-    }
+        const int threads_per_block = 256;
+        const int blocks = (t.N + threads_per_block - 1) / threads_per_block;
+        fill_kernel<<<blocks, threads_per_block>>>(t.d.get(), value, t.N);
+        
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            throw std::runtime_error(std::string("Tensor::ones fill_kernel 启动失败: ") + cudaGetErrorString(err));
+        }
     }
 
     return t;
 }
 
-Tensor Tensor::zeros(const std::vector<int>& _shape, Device _device) {
-    Tensor t(_shape, _device);
-    if (_device == Device::cpu) {
-        float* ptr = t.h.get();
-        for (int i = 0; i < t.N; ++i) {
-            ptr[i] = 1.0f;
-        }
-    } else if (_device == Device::gpu) {
-    const int threads_per_block = 256;
-    const int blocks = (t.N + threads_per_block - 1) / threads_per_block;
-    fill_kernel<<<blocks, threads_per_block>>>(t.d.get(), 0.0f, t.N);
-    
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        throw std::runtime_error(std::string("Tensor::zeros fill_kernel 启动失败: ") + cudaGetErrorString(err));
-    }
-    }
+Tensor Tensor::ones(const std::vector<int>& _shape, Device _device) {
+    return fill(_shape,1.0f,_device);
+}
 
-    return t;
+Tensor Tensor::zeros(const std::vector<int>& _shape, Device _device) {
+    return fill(_shape,0.0f,_device);
 }
 
 bool Tensor::operator==(const Tensor& other) const {
@@ -266,23 +252,6 @@ bool Tensor::operator==(const Tensor& other) const {
     return true;
 }
 
-Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
-    long long new_N = 1;
-    for (long long dim : new_shape) new_N *= dim;
-    if (new_N != this->N) {
-        throw std::runtime_error("Tensor::reshape: total number of elements must remain the same.");
-    }
-
-    Tensor reshaped_tensor;
-    reshaped_tensor.shape = new_shape;
-    reshaped_tensor.N = new_N;
-    reshaped_tensor.device = this->device;
-
-    reshaped_tensor.d = this->d;
-    reshaped_tensor.h = this->h;
-
-    return reshaped_tensor;
-}
 
 //需要保证只读和临时引用以及不存储这个指针  否则会造成悬垂指针
 float* Tensor::get_ptr() const{

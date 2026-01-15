@@ -42,12 +42,11 @@ public:
     std::vector<int>shape;
     Device device;
 
+    static Tensor fill(const std::vector<int>& _shape,const float& value,Device _device);
     static Tensor ones(const std::vector<int>& _shape, Device _device);
     static Tensor zeros(const std::vector<int>& _shape, Device _device);
 
     bool operator==(const Tensor& other) const;
-
-    Tensor reshape(const std::vector<int>& new_shape) const;
 
     float* get_ptr() const;
 

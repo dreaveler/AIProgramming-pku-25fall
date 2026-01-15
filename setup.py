@@ -2,15 +2,18 @@ import os
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 with open("README.md", "r", encoding="utf-8") as fid:
   long_description = fid.read()
 
 
 dir = './csrc'
-sources = ['{}/{}'.format(dir, src) for src in os.listdir(dir)
-           if src.endswith('.cpp') or src.endswith('.cu')]
+sources = []
+for root, _, files in os.walk(dir):
+  for src in files:
+    if src.endswith('.cpp') or src.endswith('.cu'):
+      sources.append(os.path.join(root, src))
 
 cuda_home = os.environ.get("CUDA_HOME", "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.0")
 cuda_lib_dir = os.path.join(cuda_home, "lib", "x64")
@@ -24,8 +27,7 @@ setup(
     description='Homework of pku2025fall AIProgramming',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=['torchofdreaveler'],
-    # packages=find_packages(),
+    packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     install_requires=['torch', 'numpy'],
