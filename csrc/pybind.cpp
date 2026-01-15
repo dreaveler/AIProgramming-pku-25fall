@@ -115,7 +115,8 @@ PYBIND11_MODULE(core, m) {
 
     m.def("convolve_backward", &nn::convolve_backward, "Convolution layer backward pass",
         py::arg("input"), py::arg("kernel"), py::arg("grad_y"),
-        py::arg("grad_input"), py::arg("grad_kernel"));
+        py::arg("grad_input"), py::arg("grad_kernel"),
+        py::arg("padding") = 1, py::arg("stride") = 1);
 
     m.def("maxpooling", &nn::maxpooling, "2x2 Max Pooling (stride=2)",
         py::arg("input"), py::arg("output"), py::arg("mask"));

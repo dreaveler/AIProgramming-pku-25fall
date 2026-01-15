@@ -8,21 +8,24 @@ from torch.utils.tensorboard import SummaryWriter
 class LeNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 8 * 8, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 10),
+        )
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        x = self.features(x)
+        return self.classifier(x)
     
 
 if __name__ == '__main__':
@@ -34,10 +37,14 @@ if __name__ == '__main__':
     print(device)
 
     transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2470, 0.2435, 0.2616)),
+        ]
+    )
 
-    batch_size = 4
+    batch_size = 128
         
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                             download=True, transform=transform)
@@ -55,7 +62,7 @@ if __name__ == '__main__':
     Lenet.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(Lenet.parameters(),lr = 0.001 , momentum=0.5) #momentum指的是动量
+    optimizer = optim.SGD(Lenet.parameters(),lr = 0.01 , momentum=0.9) #momentum指的是动量
 
 
     for epoch in range(10):  # loop over the dataset multiple times

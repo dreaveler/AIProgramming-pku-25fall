@@ -33,8 +33,9 @@ __global__ void kernel_img2col(const float* img, float* col,
 void nn::img2col(const Tensor& img, Tensor& col, const int padding, const int stride,
                   const int k_h, const int k_w) {
     int N = img.shape[0], C = img.shape[1], H = img.shape[2], W = img.shape[3];
-    int total_num = N * C * H * W * k_h * k_w;
-    kernel_img2col<<<CudaGetBlocks(total_num), kCudaThreadsNum>>>(img.get_ptr(), col.get_ptr(), N, C, H, W);
+    long long total_num = (long long)N * C * H * W * k_h * k_w;
+    kernel_img2col<<<CudaGetBlocks((int)total_num), kCudaThreadsNum>>>(
+        img.get_ptr(), col.get_ptr(), N, C, H, W, k_h, k_w, stride, padding);
 }
 
 void nn::convolve(const Tensor& img, const Tensor& kernel, Tensor& output,
@@ -44,18 +45,19 @@ void nn::convolve(const Tensor& img, const Tensor& kernel, Tensor& output,
     Tensor col({N * H * W, C * k_h * k_w}, Device::gpu);
     Tensor flattened_kernel({Cin * k_h * k_w, Cout}, Device::gpu);
     flatten_kernel(kernel, flattened_kernel);
-    img2col(img, col);
+    img2col(img, col, padding, stride, k_h, k_w);
     Tensor ans_N({N * H * W, Cout}, Device::gpu);
     gemm_gpu(col, flattened_kernel, ans_N);
     reshape_col_to_image(ans_N, output);
 }
 
 void nn::convolve_backward(const Tensor& img, const Tensor& kernel, const Tensor& grad_y,
-                            Tensor& grad_img, Tensor& grad_kernel) {
+                            Tensor& grad_img, Tensor& grad_kernel,
+                            const int padding, const int stride) {
     int Cout = kernel.shape[0], Cin = kernel.shape[1], k_h = kernel.shape[2], k_w = kernel.shape[3];
     int N = img.shape[0], C = img.shape[1], H = img.shape[2], W = img.shape[3];
     Tensor col = Tensor::zeros({N * H * W, C * k_h * k_w}, Device::gpu);
-    img2col(img, col);
+    img2col(img, col, padding, stride, k_h, k_w);
 
     Tensor grad_col = Tensor::zeros({N * H * W, C * k_h * k_w}, Device::gpu);
     grad_img = Tensor::zeros(grad_img.shape, grad_img.device);
@@ -72,7 +74,7 @@ void nn::convolve_backward(const Tensor& img, const Tensor& kernel, const Tensor
     flatten_kernel(kernel, flattened_kernel);
     gemm_gpu(grad_y_reshaped, flattened_kernel, grad_col, 1.0f, 0.0f, false, true);
 
-    col2img(grad_col, grad_img);
+    col2img(grad_col, grad_img, padding, stride, k_h, k_w);
 }
 
 __global__ void col2img_kernel(const float* grad_col, float* grad_img,
@@ -99,10 +101,10 @@ __global__ void col2img_kernel(const float* grad_col, float* grad_img,
     }
 }
 
-void nn::col2img(const Tensor& grad_col, Tensor& grad_img, const int stride,
-                  const int pdding, const int k_h, const int k_w) {
+void nn::col2img(const Tensor& grad_col, Tensor& grad_img, const int padding,
+                  const int stride, const int k_h, const int k_w) {
     int N = grad_img.shape[0], C = grad_img.shape[1], H = grad_img.shape[2], W = grad_img.shape[3];
-    int total_num = N * C * H * W * k_h * k_w;
-    col2img_kernel<<<CudaGetBlocks(total_num), kCudaThreadsNum>>>(
-        grad_col.get_ptr(), grad_img.get_ptr(), N, C, H, W);
+    long long total_num = (long long)N * C * H * W * k_h * k_w;
+    col2img_kernel<<<CudaGetBlocks((int)total_num), kCudaThreadsNum>>>(
+        grad_col.get_ptr(), grad_img.get_ptr(), N, C, H, W, stride, padding, k_h, k_w);
 }

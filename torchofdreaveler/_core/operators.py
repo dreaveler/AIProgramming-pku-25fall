@@ -687,6 +687,8 @@ class Conv2d(TensorOp):
             out_grad.realize_cached_data(),
             grad_input,
             grad_kernel,
+            padding=self.padding,
+            stride=self.stride,
         )
         return Tensor.make_const(grad_input), Tensor.make_const(grad_kernel)
 

@@ -4,13 +4,13 @@ from torchvision import transforms
 from torchofdreaveler import data, optim
 from torchofdreaveler._core.device import gpu
 
-from models.resnet import ResNetSmall
+from models.resnet import ResNetSmall, ResNet20
 from torchofdreaveler.training import fit
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train ResNetSmall on CIFAR10.")
-    parser.add_argument("--model", choices=["resnet", "vgg", "lenet"], default="resnet")
+    parser.add_argument("--model", choices=["resnet", "resnet20", "vgg", "lenet"], default="resnet")
     parser.add_argument("--optimizer", choices=["sgd", "adam"], default="sgd")
     parser.add_argument("--scheduler", choices=["step", "cos", "none"], default="cos")
     parser.add_argument("--eta-min", type=float, default=0.0)
@@ -63,6 +63,8 @@ def main():
 
     if args.model == "resnet":
         model = ResNetSmall(in_channels=3, num_classes=10, device=device).to(device)
+    elif args.model == "resnet20":
+        model = ResNet20(in_channels=3, num_classes=10, device=device).to(device)
     elif args.model == "vgg":
         from models.vgg import VGG11
         model = VGG11(in_channels=3, num_classes=10, device=device).to(device)
