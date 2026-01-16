@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument("--scheduler", choices=["step", "cos", "none"], default="cos")
     parser.add_argument("--eta-min", type=float, default=0.0)
     parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-1)
     parser.add_argument("--weight-decay", type=float, default=5e-4)
     parser.add_argument("--momentum", type=float, default=0.9)
@@ -27,6 +27,9 @@ def parse_args():
     parser.add_argument("--save-every", type=int, default=5)
     parser.add_argument("--resume-from", default=None)
     parser.add_argument("--log-dir", default="logdir/resnet_small")
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true", default=False)
+    parser.add_argument("--no-pin-memory", dest="pin_memory", action="store_false")
     parser.add_argument("--normalize", action="store_true", default=True)
     parser.add_argument("--no-normalize", dest="normalize", action="store_false")
     return parser.parse_args()
@@ -58,8 +61,22 @@ def main():
                             transform=transforms.Compose(train_transforms))
     test_ds = data.cifar10(train=False, flatten=False, augment=False,
                            transform=transforms.Compose(test_transforms))
-    train_loader = data.DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, device=device)
-    test_loader = data.DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, device=device)
+    train_loader = data.DataLoader(
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        device=device,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+    )
+    test_loader = data.DataLoader(
+        test_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        device=device,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+    )
 
     if args.model == "resnet":
         model = ResNetSmall(in_channels=3, num_classes=10, device=device).to(device)

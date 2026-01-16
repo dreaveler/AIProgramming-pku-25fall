@@ -32,6 +32,9 @@ def parse_args():
     parser.add_argument("--save-every", type=int, default=5)
     parser.add_argument("--resume-from", default=None)
     parser.add_argument("--log-dir", default="logdir/resnet20_tinyimagenet")
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true", default=False)
+    parser.add_argument("--no-pin-memory", dest="pin_memory", action="store_false")
     parser.add_argument("--normalize", action="store_true", default=True)
     parser.add_argument("--no-normalize", dest="normalize", action="store_false")
     return parser.parse_args()
@@ -83,8 +86,22 @@ def main():
         augment=False,
         transform=test_tf,
     )
-    train_loader = data.DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, device=device)
-    test_loader = data.DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, device=device)
+    train_loader = data.DataLoader(
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        device=device,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+    )
+    test_loader = data.DataLoader(
+        test_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        device=device,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_memory,
+    )
 
     model = ResNet20(in_channels=3, num_classes=200, device=device).to(device)
 
