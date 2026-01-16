@@ -35,6 +35,8 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true", default=False)
     parser.add_argument("--no-pin-memory", dest="pin_memory", action="store_false")
+    parser.add_argument("--use-cache", action="store_true", default=False)
+    parser.add_argument("--cache-root", default="datasets/tiny-imagenet-200/cache")
     parser.add_argument("--normalize", action="store_true", default=True)
     parser.add_argument("--no-normalize", dest="normalize", action="store_false")
     return parser.parse_args()
@@ -70,22 +72,38 @@ def main():
     device = gpu()
 
     train_tf, test_tf = build_transforms(args.image_size, args.augment, args.normalize)
-    train_ds = data.tiny_imagenet(
-        root=args.data_root,
-        split="train",
-        flatten=False,
-        image_size=args.image_size,
-        augment=False,
-        transform=train_tf,
-    )
-    test_ds = data.tiny_imagenet(
-        root=args.data_root,
-        split="val",
-        flatten=False,
-        image_size=args.image_size,
-        augment=False,
-        transform=test_tf,
-    )
+    if args.use_cache:
+        train_ds = data.cached_tiny_imagenet(
+            cache_root=args.cache_root,
+            split="train",
+            transform=train_tf,
+            normalize=False,
+            flatten=False,
+        )
+        test_ds = data.cached_tiny_imagenet(
+            cache_root=args.cache_root,
+            split="val",
+            transform=test_tf,
+            normalize=False,
+            flatten=False,
+        )
+    else:
+        train_ds = data.tiny_imagenet(
+            root=args.data_root,
+            split="train",
+            flatten=False,
+            image_size=args.image_size,
+            augment=False,
+            transform=train_tf,
+        )
+        test_ds = data.tiny_imagenet(
+            root=args.data_root,
+            split="val",
+            flatten=False,
+            image_size=args.image_size,
+            augment=False,
+            transform=test_tf,
+        )
     train_loader = data.DataLoader(
         train_ds,
         batch_size=args.batch_size,

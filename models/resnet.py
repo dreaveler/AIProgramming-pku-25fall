@@ -8,18 +8,24 @@ class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, device=None):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, padding=1, device=device)
+        self.bn1 = nn.BatchNorm2d(out_channels, device=device)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1, device=device)
+        self.bn2 = nn.BatchNorm2d(out_channels, device=device)
         self.downsample = None
+        self.downsample_bn = None
         if in_channels != out_channels:
             self.downsample = nn.Conv2d(in_channels, out_channels, 3, padding=1, device=device)
+            self.downsample_bn = nn.BatchNorm2d(out_channels, device=device)
 
     def forward(self, x):
         identity = x
-        out = self.relu(self.conv1(x))
-        out = self.conv2(out)
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
         if self.downsample is not None:
             identity = self.downsample(identity)
+            if self.downsample_bn is not None:
+                identity = self.downsample_bn(identity)
         out = out + identity
         return self.relu(out)
 

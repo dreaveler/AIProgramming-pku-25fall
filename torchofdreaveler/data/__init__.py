@@ -157,6 +157,25 @@ class TinyImageNetDataset:
         return image, label
 
 
+class CachedArrayDataset:
+    def __init__(self, images, labels, transform=None):
+        self.images = images
+        self.labels = labels
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        x = self.images[idx]
+        y = int(self.labels[idx])
+        if self.transform is not None:
+            if Image is not None and not isinstance(x, Image.Image):
+                x = Image.fromarray(np.asarray(x))
+            x = self.transform(x)
+        return x, y
+
+
 def _build_transform(image_size=None, augment=False):
     if tv_transforms is None:
         return None
@@ -214,4 +233,24 @@ def tiny_imagenet(root="./datasets/tiny-imagenet-200", split="train", flatten=Fa
     return TorchvisionDataset(dataset, normalize=normalize, flatten=flatten)
 
 
-__all__ = ["TorchvisionDataset", "DataLoader", "mnist", "cifar10", "imagenet", "tiny_imagenet"]
+def cached_tiny_imagenet(cache_root="./datasets/tiny-imagenet-200/cache", split="train",
+                         transform=None, normalize=False, flatten=False):
+    images_path = os.path.join(cache_root, f"tiny_imagenet_{split}_images.npy")
+    labels_path = os.path.join(cache_root, f"tiny_imagenet_{split}_labels.npy")
+    if not os.path.exists(images_path) or not os.path.exists(labels_path):
+        raise RuntimeError(f"Cached files not found: {images_path} / {labels_path}")
+    images = np.load(images_path, mmap_mode="r")
+    labels = np.load(labels_path, mmap_mode="r")
+    dataset = CachedArrayDataset(images, labels, transform=transform)
+    return TorchvisionDataset(dataset, normalize=normalize, flatten=flatten)
+
+
+__all__ = [
+    "TorchvisionDataset",
+    "DataLoader",
+    "mnist",
+    "cifar10",
+    "imagenet",
+    "tiny_imagenet",
+    "cached_tiny_imagenet",
+]
