@@ -116,6 +116,7 @@ Tensor Tensor::gpu(){
     } else if (device == Device::gpu){
         return *this;
     }
+    throw std::runtime_error("Tensor::gpu called on invalid device");
 }
 
 Tensor Tensor::cpu(){
@@ -126,6 +127,7 @@ Tensor Tensor::cpu(){
         cudaMemcpy(out.h.get(), d.get(), size, cudaMemcpyDeviceToHost);
         return out;
     }
+    throw std::runtime_error("Tensor::cpu called on invalid device");
 }
 
 void Tensor::random(){
@@ -155,7 +157,7 @@ void Tensor::print(int cur_dim,size_t flat_idx){
     if(cur_dim == shape.size()-1){
         std::cout<<"[";
         for(auto i = 0;i < shape[cur_dim];i++){
-            std::cout<<t[flat_idx + i];
+            std::cout<<t.get()[flat_idx + i];
             if(i < shape[cur_dim] - 1) std::cout<<",";
         }
         std::cout<<"]";
@@ -210,42 +212,39 @@ Tensor Tensor::zeros(const std::vector<int>& _shape, Device _device) {
 }
 
 bool Tensor::operator==(const Tensor& other) const {
-    // 1. 检查 Shape 是否匹配
     if (this->shape != other.shape) {
-        std::cout << "比较失败: Shape不匹配!" << std::endl;
+        std::cout << "shape mismatch" << std::endl;
         return false;
     }
 
-    // 如果两个张量都为空，则它们相等
     if (this->N == 0 && other.N == 0) {
         return true;
     }
 
-    // 2. 将张量数据准备到 CPU 内存中
-    FloatPtr this_h;
+    std::vector<float> this_buf;
+    std::vector<float> other_buf;
+    const float* p1 = nullptr;
+    const float* p2 = nullptr;
     if (this->device == Device::cpu) {
-        this_h = this->h;
-    } else { // 如果在 GPU 上，拷贝到临时的 CPU 内存
-        this_h = FloatPtr(new float[this->N]);
-        cudaMemcpy(this_h.get(), d.get(), size, cudaMemcpyDeviceToHost);
+        p1 = this->h.get();
+    } else {
+        this_buf.resize(this->N);
+        cudaMemcpy(this_buf.data(), d.get(), size, cudaMemcpyDeviceToHost);
+        p1 = this_buf.data();
     }
 
-    FloatPtr other_h;
     if (other.device == Device::cpu) {
-        other_h = other.h;
-    } else { // 如果在 GPU 上，拷贝到临时的 CPU 内存
-        other_h = FloatPtr(new float[other.N]);
-        cudaMemcpy(other_h.get(), other.d.get(), other.size, cudaMemcpyDeviceToHost);
+        p2 = other.h.get();
+    } else {
+        other_buf.resize(other.N);
+        cudaMemcpy(other_buf.data(), other.d.get(), other.size, cudaMemcpyDeviceToHost);
+        p2 = other_buf.data();
     }
 
-    // 3. 逐元素比较
     const float tolerance = 1e-5f;
-    const float* p1 = this_h.get();
-    const float* p2 = other_h.get();
-
     for (size_t i = 0; i < this->N; ++i) {
         if (std::abs(p1[i] - p2[i]) > tolerance) {
-            std::cout << "比较失败于索引 " << i << ": " << p1[i] << " vs " << p2[i] << std::endl;
+            std::cout << "mismatch at " << i << ": " << p1[i] << " vs " << p2[i] << std::endl;
             return false;
         }
     }

@@ -85,25 +85,25 @@ __global__ void col_to_image_kernel(const float* __restrict__ col_data,
                                     float* __restrict__ image_data,
                                     int N, int Cout, int H, int W) {
     // 每个线程负责 image_data 中的一个像素
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int total_pixels = N * Cout * H * W;
 
-    if (index >= total_pixels) return;
+    if (idx >= total_pixels) return;
 
     // 从线性索引反算出 N, Cout, H, W 的坐标
-    int w = index % W;
-    int h = (index / W) % H;
-    int co = (index / (W * H)) % Cout;
-    int n = index / (W * H * Cout);
+    int w = idx % W;
+    int h = (idx / W) % H;
+    int co = (idx / (W * H)) % Cout;
+    int n = idx / (W * H * Cout);
 
     // 计算源矩阵 col_data 中的索引
     // 源矩阵的行对应 (n, h, w) 的组合
-    int src_row = n * (H * W) + h * W + w;
+    int src_row_idx = n * (H * W) + h * W + w;
     // 源矩阵的列对应输出通道 co
     int src_col = co;
-    int src_index = src_row * Cout + src_col;
+    int src_idx = src_row_idx * Cout + src_col;
 
-    image_data[index] = col_data[src_index];
+    image_data[idx] = col_data[src_idx];
 }
 
 // CPU 版本

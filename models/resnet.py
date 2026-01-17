@@ -8,24 +8,18 @@ class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, device=None):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, padding=1, device=device)
-        self.bn1 = nn.BatchNorm2d(out_channels, device=device)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1, device=device)
-        self.bn2 = nn.BatchNorm2d(out_channels, device=device)
         self.downsample = None
-        self.downsample_bn = None
         if in_channels != out_channels:
             self.downsample = nn.Conv2d(in_channels, out_channels, 3, padding=1, device=device)
-            self.downsample_bn = nn.BatchNorm2d(out_channels, device=device)
 
     def forward(self, x):
         identity = x
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
+        out = self.relu(self.conv1(x))
+        out = self.conv2(out)
         if self.downsample is not None:
             identity = self.downsample(identity)
-            if self.downsample_bn is not None:
-                identity = self.downsample_bn(identity)
         out = out + identity
         return self.relu(out)
 
@@ -35,27 +29,21 @@ class BasicBlock18(nn.Module):
         super().__init__()
         self.pool = nn.MaxPool2d() if downsample else None
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, padding=1, device=device)
-        self.bn1 = nn.BatchNorm2d(out_channels, device=device)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1, device=device)
-        self.bn2 = nn.BatchNorm2d(out_channels, device=device)
         self.downsample = None
-        self.downsample_bn = None
         if downsample or in_channels != out_channels:
             self.downsample = nn.Conv2d(in_channels, out_channels, 1, padding=0, device=device)
-            self.downsample_bn = nn.BatchNorm2d(out_channels, device=device)
 
     def forward(self, x):
         identity = x
         if self.pool is not None:
             identity = self.pool(identity)
             x = self.pool(x)
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
+        out = self.relu(self.conv1(x))
+        out = self.conv2(out)
         if self.downsample is not None:
             identity = self.downsample(identity)
-            if self.downsample_bn is not None:
-                identity = self.downsample_bn(identity)
         out = out + identity
         return self.relu(out)
 
@@ -117,7 +105,6 @@ class ResNet18(nn.Module):
         self.in_channels = in_channels
         self.stem = nn.Sequential(
             nn.Conv2d(in_channels, base_channels, 3, padding=1, device=device),
-            nn.BatchNorm2d(base_channels, device=device),
             nn.ReLU(),
         )
         self.layer1 = self._make_layer(base_channels, base_channels, blocks[0], downsample=False, device=device)

@@ -1,0 +1,155 @@
+\documentclass[UTF8]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{ctex}
+
+\title{基于CUDA + pybind11的简易卷积网络框架与CIFAR-10分类}
+\author{2400013080 李玮博}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{实验背景}
+深度学习框架通常将张量运算、自动微分与GPU加速高度封装。为了理解卷积网络的底层实现流程，
+本实验在不依赖现成深度学习框架的前提下，使用CUDA实现卷积前向与反向传播，
+通过pybind11暴露为Python可调用模块，并在Python侧完成自动微分与优化器。
+最终在CIFAR-10数据集上完成图像分类任务，验证该最小框架能够完成端到端训练。
+
+\section{方法}
+\subsection{整体架构}
+框架分为三层：
+（1）CUDA/C++底层：实现张量存储、基础算子、卷积与反向传播等；
+（2）pybind11绑定层：将CUDA算子注册为Python可调用接口；
+（3）Python前端：构建Tensor与计算图，完成自动微分、优化器与模型定义。
+
+\subsection{CUDA卷积前向与反向}
+卷积实现位于 \texttt{csrc/layers/conv.cu}，采用 \texttt{im2col} 将输入展开为矩阵，
+再调用GPU矩阵乘法完成卷积前向。反向传播包含两部分：
+对卷积核的梯度通过 \texttt{col} 与输出梯度矩阵相乘得到；
+对输入的梯度通过转置卷积（\texttt{col2img}）重建并累加。
+该实现支持 padding 与 stride。
+
+\subsection{pybind11接口}
+绑定代码位于 \texttt{csrc/pybind.cpp}，编译为 \texttt{torchofdreaveler.core} 模块。
+接口以函数形式暴露，例如 \texttt{convolve} 与 \texttt{convolve\_backward}，并在Python侧封装为算子类。
+
+\subsection{自动微分与优化器}
+Python侧 \texttt{torchofdreaveler/\_core/operators.py} 定义计算图与算子，
+通过 \texttt{compute\_gradient\_of\_variables} 反向传播梯度。
+优化器实现位于 \texttt{torchofdreaveler/optim}，提供SGD与Adam。
+损失函数采用Softmax交叉熵，CUDA实现位于 \texttt{csrc/layers/softmax\_loss.cu}。
+
+\subsection{模型与训练流程}
+模型示例采用Lenet风格的CNN与ResNetSmall（见 \texttt{models/lenet.py} 与 \texttt{models/resnet.py}），
+训练脚本为 \texttt{train.py}。
+数据集加载通过 \texttt{torchofdreaveler/data} 封装 torchvision 的 CIFAR-10 下载与预处理。
+
+\section{实验结果}
+表~\ref{tab:results} 给出一组可复现实验结果（来源：\texttt{result.md} 中的训练记录）。
+ResNet20 在 CIFAR-10 上达到约 89.5\% 测试准确率；简单CNN基线约 75\%。
+
+\begin{table}[h]
+\centering
+\caption{CIFAR-10 分类结果}
+\label{tab:results}
+\begin{tabular}{lccc}
+\toprule
+模型 & 训练轮数 & 最佳测试准确率 & 备注 \\
+\midrule
+ResNet20 & 100 & 89.5\% & 自定义框架训练 \\
+Simple CNN & 40 & 75.1\% & 参考基线 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{resnet20_acc.png}
+\caption{ResNet20 CIFAR-10 accuracy curve}
+\label{fig:resnet20_acc}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{simplecnn_acc.png}
+\caption{Simple CNN CIFAR-10 accuracy curve}
+\label{fig:simplecnn_acc}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{simplecnn_loss.png}
+\caption{Simple CNN CIFAR-10 loss curve}
+\label{fig:simplecnn_loss}
+\end{figure}
+
+
+\section{讨论}
+（1）\textbf{正确性验证}：卷积前向与反向与PyTorch对齐测试已在 \texttt{tests/test\_operator\_parity.py} 中实现，
+为算子正确性提供保障。 \\
+（2）\textbf{性能瓶颈}：当前实现以 \texttt{im2col + GEMM} 为主，内存开销较大，
+且未对数据布局与融合算子做进一步优化。 \\
+（3）\textbf{模型规模与精度}：简单网络收敛快但精度上限有限，
+ResNet20 能较好展示框架对更复杂网络的支持能力。
+
+\section{结论}
+本实验完成了基于CUDA的卷积前向/反向、pybind11绑定、Python自动微分与优化器，
+构建了一个可训练的轻量级卷积网络框架，并在CIFAR-10上验证了可用性。
+后续可进一步优化算子性能、扩展算子覆盖率并完善工程化工具链。
+
+\section{如何运行与复现}
+\subsection{环境准备}
+\begin{itemize}
+  \item Windows + CUDA Toolkit（示例使用 CUDA 13.x）
+  \item Python 3.8+
+  \item 依赖：\texttt{torch}, \texttt{torchvision}, \texttt{numpy}
+\end{itemize}
+
+\subsection{pip安装包}
+可以直接通过pip安装
+\begin{lstlisting}[language=bash]
+pip install .
+\end{lstlisting}
+
+\subsection{包的使用}
+与torch的语言类似，具体细节可以直接参考\texttt{train.py}文件以及所有train开始的文件。
+
+且当前实现支持自定义sgd adam等优化器以及scheduler的参数 并支持checkpoint保存模型，支持使用tensorboard保存记录并进行可视化
+\subsection{训练CIFAR-10}
+\begin{lstlisting}[language=bash]
+python train.py --model lenet --epochs 50 --batch-size 512 --lr 0.1
+\end{lstlisting}
+该命令会自动下载 CIFAR-10 至 \texttt{./datasets/cifar10}，并在 \texttt{checkpoints/} 输出模型权重。
+若使用ResNet20复现实验结果，可运行：
+\begin{lstlisting}[language=bash]
+python train.py --model resnet20 --epochs 100 --batch-size 512 --lr 0.1
+\end{lstlisting}
+
+\section{bonus：训练ImageNet}
+由于2012版下载包过大，因此只使用Tiny ImageNet来进行训练，我尝试实现了BatchNorm，但实现细节可能出现问题，
+算法并行度不够高，导致加上BN后GPU的使用率极低，而不加BN的resnet18在学习率较大时极易爆炸，经常出现loss为nan的情况，
+因此仍然使用resnet20去实现，但由于resnet20的参数量不够使得不太能拟合好模型，且同样由于缺少BN，收敛速度较慢。
+结果为训练了136个epoch后测试准确率为38.14\% 
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{resnet20_ti_acc.png}
+\caption{ResNet20 Tiny ImageNet accuracy curve}
+\label{fig:resnet20_ti_acc}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\linewidth]{resnet20_ti_loss.png}
+\caption{ResNet20 Tiny ImageNet loss curve}
+\label{fig:resnet20_ti_loss}
+\end{figure}
+
+
+具体训练模型与训练参数细节可以参照\texttt{train\_tinyimagenet\_renet20.py}
+
+\end{document}

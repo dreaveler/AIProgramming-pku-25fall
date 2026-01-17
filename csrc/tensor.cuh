@@ -8,6 +8,7 @@
 #include<string>
 #include<stdexcept>
 #include<cuda_runtime.h>
+#include<cmath>
 #include<cstring>
 #include<curand.h>
 
